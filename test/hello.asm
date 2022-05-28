@@ -18,3 +18,9 @@ CODE SEGMENT USE16
 	     INT    21H            	;BACK TO DOS
 CODE ENDS
 END  BEG
+; movsb
+; cld
+; std
+; rep movsw
+; pushf
+; popf
