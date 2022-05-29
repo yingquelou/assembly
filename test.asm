@@ -141,7 +141,71 @@ INT21H_READ_FILE  equ    3fh
     ; CF set on error; AX = error code.
     ; note: if CX is zero, no data is written, and the file is truncated or extended to the current position data is written beginning at the current file position, and the file position is updated after a successful write the usual cause for AX < CX on return is a full disk.
 INT21H_WRITE_FILE equ    40h
+    ; INT 21h / AH= 41h - delete file (unlink).
+
+    ; Entry:
+    ; DS:DX -> ASCIZ filename (no wildcards, but see notes).
+    ; return:
+    ; CF clear if successful, AX destroyed. AL is the drive of deleted file (undocumented).
+    ; CF set on error AX = error code.
+    ; Note: DOS does not erase the file's data; it merely becomes inaccessible because the FAT chain for the file is cleared deleting a file which is currently open may lead to filesystem corruption.
 INT21H_DELETE_FILE equ    41h
+    ; INT 21h / AH= 42h - SEEK - set current file position.
+
+    ; Entry:
+    ; AL = origin of move: 0 - start of file. 1 - current file position. 2 - end of file.
+    ; BX = file handle.
+    ; CX:DX = offset from origin of new file position.
+    ; Return:
+    ; CF clear if successful, DX:AX = new file position in bytes from start of file.
+    ; CF set on error, AX = error code.
+    ; Notes:
+
+    ; for origins 1 and 2, the pointer may be positioned before the start of the file; no error is returned in that case, but subsequent attempts to read or write the file will produce errors. If the new position is beyond the current end of file, the file will be extended by the next write (see AH=40h).
+INT21H_SEEK_FILE equ    42h;
+    ; INT 21h / AH= 47h - get current directory.
+
+    ; Entry:
+    ; DL = drive number (00h = default, 01h = A:, etc)
+    ; DS:SI -> 64-byte buffer for ASCIZ pathname.
+    ; Return:
+    ; Carry is clear if successful
+    ; Carry is set on error, AX = error code (0Fh)
+    ; Notes:
+
+    ; the returned path does not include a drive and the initial backslash.
+INT21H_GETPATH_DIR equ    47h;
+
+COMS_ADRESS_PORT equ 70H
+COMS_DATA_PORT equ 71H
+;The CMOS time uses BCD CODE
+COMS_SECOND_ADRESS equ 0
+COMS_MINUTE_ADRESS equ 2
+COMS_HOUR_ADRESS equ 4
+COMS_DAY_ADRESS equ 7
+COMS_MONTH_ADRESS equ 8
+COMS_YEAR_ADRESS equ 9
+; 扫描码:断码=通码+80h
+; 扫描码对应字符时,该字符及通码被送入键盘缓冲区
+; 扫描码对应控制键或切换键时,对应状态信息被送入状态字节单元
+; 键盘状态字节单元:0040:17,其各个比特位记录的信息如下:
+; 0:右shift状态,置1表示按下右shift键
+; 1:左shift状态,置1表示按下左shift键
+; 2:Ctrl状态,置1表示按下Ctrl键
+; 3:Alt状态,置1表示按下Alt键
+; 4:ScrollLock状态,置1表示Scroll指示灯亮
+; 5:NumLock状态,置1表示小键盘输入的是数字
+; 6:CapsLock状态,置1表示输入大写字母
+; 7:Insert状态,置1表示处于删除态。
+KEYBOARD_PORT equ 60H
+; 响应键盘输入到键盘缓冲区的中断
+INT9H equ 9
+; 从键盘缓冲区读取一个键盘输入
+; entry:none
+; return:(ah)=扫描码,(al)=ASCII码
+INT16H_GETCHAR_BUFFER equ 0
+  
+
 assume cs:codesg
 assume ds:datasg
 codesg segment use16
@@ -150,14 +214,26 @@ codesg segment use16
            MOV DS,DX
            XOR DX,DX
            MOV AH,INT21H_MKDIR
-           int 21h                ;创建目录
-
+           int 21h                      ;创建目录
+           
            mov ah,INT21H_CHDIR
-           int 21h                ;切换目录
+           int 21h                      ;切换目录
+          
+           std
+           MOV AX,datasg
+           MOV ES,AX
+           mov SI,2
+           MOV DI,3
+           MOV CX,3
+           rep movsb
+
+           MOV DL,4
+           MOV AH,INT21H_GETPATH_DIR
+           INT 21H
            mov ax,4c00h
            int 21h
 codesg ends
 datasg segment
-           db './21',0
+           db './21',60 dup(0)
 datasg ends
 end start
