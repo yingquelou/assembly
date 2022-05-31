@@ -4,7 +4,7 @@ stacksg segment
             word 15 dup(0)
 stacksg ends
 string segment
-           byte 256 dup('A',0)
+           byte 256 dup(0,0)
 string ends
 
 codesg segment use16
@@ -17,8 +17,11 @@ codesg segment use16
 
                   mov   bx,256*2-1
                   mov   cx,0ffh
-
-    lp:           mov   [bx],cl
+    lp:           
+    ;           mov   [bx],cl
+    ;               and   byte ptr [bx],01111111B
+                  mov   byte ptr [bx],00000111B
+                  mov   -1[bx],cl
                   sub   bx,2
                   loop  lp
 
@@ -48,21 +51,21 @@ codesg segment use16
     ;注意:栈至少预留4word的空间
     ;函数缺乏泛用性：待泛函完成后再作修改——类似c语言的memcpy/memmove,注意空间重叠问题
                   push  ds
-                  push  bx                       ;保存寄存器环境
+                  push  bx                         ;保存寄存器环境
 
-                  mov   bx,0b800h                ;正文开始
-                  mov   ds,bx                    ;让ds指向显存起始段
+                  mov   bx,0b800h                  ;正文开始
+                  mov   ds,bx                      ;让ds指向显存起始段
 
-                  mov   bl,al                    ;开始找显示的位置
+                  mov   bl,al                      ;开始找显示的位置
                   mov   al,160
                   mul   ah
                   add   bl,bl
                   xor   bh,bh
                   add   ax,bx
-                  mov   bx,ax                    ;找到了,地址在bx里
+                  mov   bx,ax                      ;找到了,地址在bx里
 
-                  mov   [bx],ch                  ;字符入显存
-                  mov   [bx].1,cl                ;样式入显存
+                  mov   [bx],ch                    ;字符入显存
+                  mov   [bx].1,cl                  ;样式入显存
     ;已用寄存器:ax,bx,cx,ds,其中用作参数的寄存器是ax、cx,其余寄存器要作合适的栈处理
                   pop   bx
                   pop   ds
@@ -107,21 +110,21 @@ codesg segment use16
                   mov   dx,ds
                   call  far ptr getRealAdress
                  
-                  cmp   dx,tmp[2]                ;比较高位
+                  cmp   dx,tmp[2]                  ;比较高位
                   ja    cp
                   jne   recp
 
-                  cmp   ax,tmp[0]                ;比较低位
+                  cmp   ax,tmp[0]                  ;比较低位
                   ja    cp
                   jne   recp
                   jmp   rt
 
     recp:         std
                   dec   cx
-                  add   si,cx                    ;是否有进位？
-                  add   di,cx                    ;是否有进位？
+                  add   si,cx                      ;是否有进位？
+                  add   di,cx                      ;是否有进位？
                   inc   cx
-    cp:           rep   movsb                    ;复制
+    cp:           rep   movsb                      ;复制
     rt:           
                   pop   dx
                   pop   ax

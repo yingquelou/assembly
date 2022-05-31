@@ -208,32 +208,44 @@ INT16H_GETCHAR_BUFFER equ 0
 
 assume cs:codesg
 assume ds:datasg
+datasg segment
+           db 'ch.txt',250 dup(0)
+datasg ends
 codesg segment use16
     start: 
-           MOV DX,datasg
-           MOV DS,DX
-           XOR DX,DX
-           MOV AH,INT21H_MKDIR
-           int 21h                      ;创建目录
-           
-           mov ah,INT21H_CHDIR
-           int 21h                      ;切换目录
-          
-           std
-           MOV AX,datasg
-           MOV ES,AX
-           mov SI,2
-           MOV DI,3
-           MOV CX,3
-           rep movsb
+           MOV  DX,datasg
+           MOV  DS,DX
 
-           MOV DL,4
-           MOV AH,INT21H_GETPATH_DIR
-           INT 21H
-           mov ax,4c00h
-           int 21h
+           xor  cx,cx
+           xor  dx,dx
+
+
+           mov  ah,INT21H_CREATE_FILE
+           INT  21H
+           jc   rt
+
+    ;    mov ah,INT21H_OPEN_FILE
+    ;    INT 21H
+    ;    jc  rt
+           mov  bx,0
+           mov  cx,0ffh+1
+    lp:    mov  [bx],bx
+           inc  bx
+           loop lp
+
+           mov  bx,ax
+           xor  dx,dx
+           mov  cx,0ffh+1
+           mov  ah,INT21H_WRITE_FILE
+           INT  21H
+           jc   rt
+
+           mov  ah,INT21H_CLOSE_FILE
+           INT  21H
+           jc   rt
+
+           
+    rt:    mov  ax,4c00h
+           int  21h
 codesg ends
-datasg segment
-           db './21',60 dup(0)
-datasg ends
 end start
